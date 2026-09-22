@@ -3,3 +3,7 @@
 sourcemap.json
 .rojo-cache/
 node_modules/
+
+# Rojo/tool binaries -- installed locally, never version-controlled.
+*.exe
+rojo
