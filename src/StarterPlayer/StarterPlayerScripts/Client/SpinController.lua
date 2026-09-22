@@ -57,14 +57,31 @@ local function playRoll(ui, onDone)
 end
 
 function SpinController.Init(ui)
+	local pendingToken = nil
+
 	ui.SpinButton.MouseButton1Click:Connect(function()
 		if rolling then
 			return
 		end
 		RequestSpin:FireServer()
+
+		local token = {}
+		pendingToken = token
+		task.delay(3, function()
+			if pendingToken == token and ui.ShowDebug then
+				ui.ShowDebug(
+					"Clicked SPIN, but got no response from the server after 3 seconds.\n\n"
+						.. "This means the request reached the server but SpinService never replied "
+						.. "(likely errored or returned early). Check the server Output window for a "
+						.. "red error around the time you clicked."
+				)
+			end
+		end)
 	end)
 
 	SpinResult.OnClientEvent:Connect(function(result)
+		pendingToken = nil
+
 		if not result.Success then
 			if result.Reason == "Cooldown" then
 				local remaining = result.CooldownRemaining or 0
@@ -73,6 +90,8 @@ function SpinController.Init(ui)
 				task.delay(remaining, function()
 					ui.CooldownLabel.Visible = false
 				end)
+			elseif ui.ShowDebug then
+				ui.ShowDebug("Server rejected the spin.\nReason: " .. tostring(result.Reason) .. (result.Detail and ("\n\n" .. tostring(result.Detail)) or ""))
 			end
 			return
 		end

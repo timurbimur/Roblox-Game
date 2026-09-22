@@ -1,13 +1,13 @@
 local Players = game:GetService("Players")
 
--- Temporary on-screen error display so failures are visible without needing
--- to find the Output panel -- remove once things are stable.
-local function showError(message)
+-- Temporary on-screen debug/error display so failures are visible without
+-- needing to find the Output panel -- remove once things are stable.
+local function createDebugDisplay()
 	local player = Players.LocalPlayer
 	local playerGui = player:WaitForChild("PlayerGui")
 
 	local gui = Instance.new("ScreenGui")
-	gui.Name = "SpinABrainrotDebugError"
+	gui.Name = "SpinABrainrotDebug"
 	gui.ResetOnSpawn = false
 	gui.Parent = playerGui
 
@@ -22,9 +22,17 @@ local function showError(message)
 	label.TextYAlignment = Enum.TextYAlignment.Top
 	label.Font = Enum.Font.Code
 	label.TextSize = 18
-	label.Text = "SPIN A BRAINROT -- CLIENT ERROR:\n\n" .. tostring(message)
+	label.Visible = false
+	label.Text = ""
 	label.Parent = gui
+
+	return function(message)
+		label.Visible = true
+		label.Text = "SPIN A BRAINROT -- DEBUG:\n\n" .. tostring(message)
+	end
 end
+
+local showDebug = createDebugDisplay()
 
 local ok, err = pcall(function()
 	local UIController = require(script.Parent.UIController)
@@ -32,11 +40,12 @@ local ok, err = pcall(function()
 	local InventoryController = require(script.Parent.InventoryController)
 
 	local ui = UIController.Init()
+	ui.ShowDebug = showDebug
 
 	SpinController.Init(ui)
 	InventoryController.Init(ui)
 end)
 
 if not ok then
-	showError(err)
+	showDebug("CLIENT ERROR:\n" .. tostring(err))
 end

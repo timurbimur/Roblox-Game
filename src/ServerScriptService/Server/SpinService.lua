@@ -51,6 +51,8 @@ local function sendInventory(player)
 	InventoryUpdated:FireClient(player, data.Inventory, data.Equipped)
 end
 
+-- SpinResult is ALWAYS fired, even on failure -- the client waits on a
+-- response and has no other way to know the request was rejected/errored.
 local function onRequestSpin(player)
 	local now = os.clock()
 	local last = lastSpinAt[player]
@@ -65,27 +67,42 @@ local function onRequestSpin(player)
 
 	local data = DataService.Get(player)
 	if not data then
+		SpinResult:FireClient(player, {
+			Success = false,
+			Reason = "NotLoaded",
+			Detail = "Your save data hasn't finished loading yet (DataStore call still pending or failed). Try again in a moment.",
+		})
 		return
 	end
 
-	lastSpinAt[player] = now
+	local ok, err = pcall(function()
+		local rarityName = rollRarity()
+		local brainrot = rollBrainrot(rarityName)
+		if not brainrot then
+			error("rollBrainrot returned nil for rarity " .. tostring(rarityName) .. " -- that rarity has no entries in BrainrotConfig.ByRarity")
+		end
 
-	local rarityName = rollRarity()
-	local brainrot = rollBrainrot(rarityName)
-	if not brainrot then
-		return
+		lastSpinAt[player] = now
+		DataService.AddBrainrot(player, brainrot.Id)
+
+		SpinResult:FireClient(player, {
+			Success = true,
+			BrainrotId = brainrot.Id,
+			Name = brainrot.Name,
+			Rarity = rarityName,
+		})
+
+		sendInventory(player)
+	end)
+
+	if not ok then
+		warn("[SpinService] onRequestSpin error for " .. player.Name .. ": " .. tostring(err))
+		SpinResult:FireClient(player, {
+			Success = false,
+			Reason = "ServerError",
+			Detail = tostring(err),
+		})
 	end
-
-	DataService.AddBrainrot(player, brainrot.Id)
-
-	SpinResult:FireClient(player, {
-		Success = true,
-		BrainrotId = brainrot.Id,
-		Name = brainrot.Name,
-		Rarity = rarityName,
-	})
-
-	sendInventory(player)
 end
 
 local function onRequestEquip(player, brainrotId)
