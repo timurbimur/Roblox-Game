@@ -1,5 +1,6 @@
--- Spawns/despawns the 3D models for a player's currently-equipped brainrots and
--- keeps them orbiting the player's character.
+-- Spawns/despawns the 3D models for a player's currently-equipped brainrots
+-- and keeps them hopping along behind the player's character, spread out
+-- side by side.
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -12,11 +13,13 @@ local EquipService = {}
 
 EquipService.MaxSlots = 3
 
-local ORBIT_RADIUS = 4
-local ORBIT_HEIGHT = 3
-local ORBIT_SPEED = 1.2
+local FOLLOW_DISTANCE = 5 -- studs behind the character
+local SIDE_SPACING = 3 -- studs between equipped brainrots
+local HOP_HEIGHT = 1.4
+local HOP_SPEED = 5
+local FOLLOW_LERP_ALPHA = 0.12 -- lower = laggier/bouncier trailing
 
-local activeCompanions = {} -- [player] = { {model = Model, connection = RBXScriptConnection}, ... }
+local activeCompanions = {} -- [player] = { {model, connection}, ... }
 
 local function clearCompanions(player)
 	local companions = activeCompanions[player]
@@ -44,7 +47,7 @@ local function spawnCompanions(player, equippedIds)
 	end
 
 	local companions = {}
-	local slotCount = math.max(#equippedIds, 1)
+	local slotCount = #equippedIds
 
 	for index, brainrotId in ipairs(equippedIds) do
 		local data = BrainrotConfig.ById[brainrotId]
@@ -54,20 +57,32 @@ local function spawnCompanions(player, equippedIds)
 
 			local primary = model.PrimaryPart
 			if primary then
-				local angleOffset = (index - 1) * (math.pi * 2 / slotCount)
+				-- Spreads slots symmetrically around directly-behind (e.g. 3
+				-- slots -> -1, 0, 1 spacing units either side of center).
+				local centerOffset = index - (slotCount + 1) / 2
+				local phase = index * 1.7 -- desyncs each brainrot's hop
+
+				local currentPosition = hrp.Position - hrp.CFrame.LookVector * FOLLOW_DISTANCE
+				model:PivotTo(CFrame.new(currentPosition, hrp.Position))
+
 				local connection = RunService.Heartbeat:Connect(function()
 					if not hrp.Parent then
 						return
 					end
-					local t = os.clock() * ORBIT_SPEED + angleOffset
-					local offset = Vector3.new(
-						math.cos(t) * ORBIT_RADIUS,
-						ORBIT_HEIGHT + math.sin(t * 2) * 0.3,
-						math.sin(t) * ORBIT_RADIUS
-					)
-					local position = hrp.Position + offset
-					model:PivotTo(CFrame.new(position, hrp.Position))
+
+					local behind = -hrp.CFrame.LookVector
+					local right = hrp.CFrame.RightVector
+					local basePosition = hrp.Position + behind * FOLLOW_DISTANCE + right * (centerOffset * SIDE_SPACING)
+
+					local hop = math.abs(math.sin(os.clock() * HOP_SPEED + phase)) * HOP_HEIGHT
+					local targetPosition = Vector3.new(basePosition.X, basePosition.Y + hop, basePosition.Z)
+
+					currentPosition = currentPosition:Lerp(targetPosition, FOLLOW_LERP_ALPHA)
+
+					local lookTarget = Vector3.new(hrp.Position.X, currentPosition.Y, hrp.Position.Z)
+					model:PivotTo(CFrame.new(currentPosition, lookTarget))
 				end)
+
 				table.insert(companions, { model = model, connection = connection })
 			else
 				model:Destroy()

@@ -1,7 +1,7 @@
 -- Drives the "reel" animation: rapidly cycles through random candidate
 -- brainrots (slowing down over time, slot-machine style) before revealing the
 -- brainrot the server actually awarded. The cycling is purely cosmetic flavor
--- -- the true result always comes from the server via SpinResult.
+-- -- the true result always comes from SpinFunction:InvokeServer().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -11,13 +11,15 @@ local RarityConfig = require(ReplicatedStorage.Modules.RarityConfig)
 local BrainrotConfig = require(ReplicatedStorage.Modules.BrainrotConfig)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-local RequestSpin = Remotes:WaitForChild("RequestSpin")
-local SpinResult = Remotes:WaitForChild("SpinResult")
+local SpinFunction = Remotes:WaitForChild("SpinFunction")
 
 local SpinController = {}
 
 local rolling = false
 local spinRandom = Random.new()
+
+local IDLE_COLOR = Color3.fromRGB(90, 160, 255)
+local DISABLED_COLOR = Color3.fromRGB(60, 60, 80)
 
 local function showEntry(ui, entry)
 	local rarity = RarityConfig.Rarities[entry.Rarity]
@@ -32,7 +34,6 @@ local function playRoll(ui, onDone)
 	local timeSinceSwap = 0
 	local duration = 1.6
 	local baseInterval = 0.05
-
 	local list = BrainrotConfig.List
 
 	local connection
@@ -56,33 +57,38 @@ local function playRoll(ui, onDone)
 	end)
 end
 
-function SpinController.Init(ui)
-	local pendingToken = nil
+local function setButtonEnabled(ui, enabled)
+	ui.SpinButton.Active = enabled
+	ui.SpinButton.BackgroundColor3 = enabled and IDLE_COLOR or DISABLED_COLOR
+end
 
+function SpinController.Init(ui)
 	ui.SpinButton.MouseButton1Click:Connect(function()
 		if rolling then
 			return
 		end
-		RequestSpin:FireServer()
 
-		local token = {}
-		pendingToken = token
-		task.delay(3, function()
-			if pendingToken == token and ui.ShowDebug then
-				ui.ShowDebug(
-					"Clicked SPIN, but got no response from the server after 3 seconds.\n\n"
-						.. "This means the request reached the server but SpinService never replied "
-						.. "(likely errored or returned early). Check the server Output window for a "
-						.. "red error around the time you clicked."
-				)
-			end
+		rolling = true
+		setButtonEnabled(ui, false)
+		ui.ResultLabel.Text = ""
+
+		local ok, result = pcall(function()
+			return SpinFunction:InvokeServer()
 		end)
-	end)
 
-	SpinResult.OnClientEvent:Connect(function(result)
-		pendingToken = nil
+		if not ok then
+			rolling = false
+			setButtonEnabled(ui, true)
+			if ui.ShowDebug then
+				ui.ShowDebug("SpinFunction:InvokeServer() errored:\n\n" .. tostring(result))
+			end
+			return
+		end
 
 		if not result.Success then
+			rolling = false
+			setButtonEnabled(ui, true)
+
 			if result.Reason == "Cooldown" then
 				local remaining = result.CooldownRemaining or 0
 				ui.CooldownLabel.Visible = true
@@ -91,16 +97,14 @@ function SpinController.Init(ui)
 					ui.CooldownLabel.Visible = false
 				end)
 			elseif ui.ShowDebug then
-				ui.ShowDebug("Server rejected the spin.\nReason: " .. tostring(result.Reason) .. (result.Detail and ("\n\n" .. tostring(result.Detail)) or ""))
+				ui.ShowDebug(
+					"Server rejected the spin.\nReason: "
+						.. tostring(result.Reason)
+						.. (result.Detail and ("\n\n" .. tostring(result.Detail)) or "")
+				)
 			end
 			return
 		end
-
-		rolling = true
-		ui.SpinButton.Active = false
-		ui.SpinButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-		ui.ResultLabel.Text = ""
-		ui.ResultLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 
 		playRoll(ui, function()
 			local rarityData = RarityConfig.Rarities[result.Rarity]
@@ -115,8 +119,11 @@ function SpinController.Init(ui)
 			}):Play()
 
 			rolling = false
-			ui.SpinButton.Active = true
-			ui.SpinButton.BackgroundColor3 = Color3.fromRGB(90, 160, 255)
+			setButtonEnabled(ui, true)
+
+			if ui.RefreshInventory and result.Inventory then
+				ui.RefreshInventory(result.Inventory, result.Equipped)
+			end
 		end)
 	end)
 end

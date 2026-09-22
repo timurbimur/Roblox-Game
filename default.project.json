@@ -10,10 +10,9 @@
       },
       "Remotes": {
         "$className": "Folder",
-        "RequestSpin": { "$className": "RemoteEvent" },
-        "SpinResult": { "$className": "RemoteEvent" },
-        "RequestEquip": { "$className": "RemoteEvent" },
-        "RequestUnequip": { "$className": "RemoteEvent" },
+        "SpinFunction": { "$className": "RemoteFunction" },
+        "EquipFunction": { "$className": "RemoteFunction" },
+        "UnequipFunction": { "$className": "RemoteFunction" },
         "InventoryUpdated": { "$className": "RemoteEvent" }
       }
     },
