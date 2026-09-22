@@ -102,8 +102,13 @@ local function buildOddsPanel(screenGui)
 	return panel
 end
 
--- The "reel" that cycles through candidate brainrots while rolling, then lands
--- on the real result (a slot-machine style reveal rather than a generic die).
+-- The "reel" that slides a strip of candidate brainrots past a center window
+-- while rolling (real slot-machine style), landing exactly on the real
+-- result. REEL_WIDTH/SLOT_WIDTH here must match SpinController's constants.
+local REEL_WIDTH = 208
+local REEL_HEIGHT = 92
+local SLOT_WIDTH = 190
+
 local function buildReveal(spinPanel)
 	local revealFrame = create("Frame", {
 		Name = "RevealFrame",
@@ -120,29 +125,88 @@ local function buildReveal(spinPanel)
 	local rarityLabel = create("TextLabel", {
 		Name = "RevealRarity",
 		Size = UDim2.new(1, -16, 0, 22),
-		Position = UDim2.fromOffset(8, 12),
+		Position = UDim2.fromOffset(8, 10),
 		BackgroundTransparency = 1,
-		Text = "",
+		Text = "???",
 		Font = Enum.Font.GothamBlack,
 		TextSize = 16,
 		TextColor3 = Color3.fromRGB(230, 230, 230),
 		TextStrokeTransparency = 0.5,
 	}, revealFrame)
 
-	local nameLabel = create("TextLabel", {
-		Name = "RevealName",
-		Size = UDim2.new(1, -16, 0, 96),
-		Position = UDim2.fromOffset(8, 38),
-		BackgroundTransparency = 1,
-		Text = "???",
-		TextWrapped = true,
-		TextScaled = true,
-		Font = Enum.Font.GothamBlack,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextStrokeTransparency = 0.4,
+	local reelWindow = create("Frame", {
+		Name = "ReelWindow",
+		Size = UDim2.fromOffset(REEL_WIDTH, REEL_HEIGHT),
+		Position = UDim2.fromOffset((240 - REEL_WIDTH) / 2, 40),
+		BackgroundColor3 = Color3.fromRGB(24, 10, 44),
+		ClipsDescendants = true,
 	}, revealFrame)
+	create("UICorner", { CornerRadius = UDim.new(0, 14) }, reelWindow)
 
-	return revealFrame, stroke, rarityLabel, nameLabel
+	local reelTrack = create("Frame", {
+		Name = "ReelTrack",
+		Size = UDim2.fromOffset(SLOT_WIDTH, REEL_HEIGHT),
+		Position = UDim2.fromOffset((REEL_WIDTH - SLOT_WIDTH) / 2, 0),
+		BackgroundTransparency = 1,
+	}, reelWindow)
+
+	local placeholder = create("TextLabel", {
+		Size = UDim2.fromOffset(SLOT_WIDTH, REEL_HEIGHT),
+		BackgroundColor3 = Color3.fromRGB(60, 30, 110),
+		Text = "???",
+		Font = Enum.Font.GothamBlack,
+		TextSize = 30,
+		TextColor3 = Color3.fromRGB(220, 210, 255),
+		TextStrokeTransparency = 0.5,
+	}, reelTrack)
+	create("UICorner", { CornerRadius = UDim.new(0, 12) }, placeholder)
+	create("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Thickness = 1.5, Transparency = 0.5 }, placeholder)
+
+	-- Edge fades + center pointer lines for a polished slot-machine look.
+	local leftFade = create("Frame", {
+		Name = "LeftFade",
+		Size = UDim2.fromOffset(26, REEL_HEIGHT),
+		BackgroundColor3 = Color3.fromRGB(24, 10, 44),
+		BorderSizePixel = 0,
+	}, reelWindow)
+	create("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+	}, leftFade)
+
+	local rightFade = create("Frame", {
+		Name = "RightFade",
+		Size = UDim2.fromOffset(26, REEL_HEIGHT),
+		Position = UDim2.fromOffset(REEL_WIDTH - 26, 0),
+		BackgroundColor3 = Color3.fromRGB(24, 10, 44),
+		BorderSizePixel = 0,
+	}, reelWindow)
+	create("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0),
+		}),
+	}, rightFade)
+
+	local centerOffset = (REEL_WIDTH - SLOT_WIDTH) / 2
+	create("Frame", {
+		Name = "IndicatorLeft",
+		Size = UDim2.fromOffset(3, REEL_HEIGHT),
+		Position = UDim2.fromOffset(centerOffset, 0),
+		BackgroundColor3 = Color3.fromRGB(255, 214, 64),
+		BackgroundTransparency = 0.2,
+	}, reelWindow)
+	create("Frame", {
+		Name = "IndicatorRight",
+		Size = UDim2.fromOffset(3, REEL_HEIGHT),
+		Position = UDim2.fromOffset(centerOffset + SLOT_WIDTH, 0),
+		BackgroundColor3 = Color3.fromRGB(255, 214, 64),
+		BackgroundTransparency = 0.2,
+	}, reelWindow)
+
+	return revealFrame, stroke, rarityLabel, reelTrack
 end
 
 local function buildSpinPanel(screenGui)
@@ -157,7 +221,7 @@ local function buildSpinPanel(screenGui)
 	create("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Thickness = 3 }, panel)
 	addGradient(panel, PANEL_TOP, PANEL_BOTTOM, 90)
 
-	local revealFrame, revealStroke, revealRarityLabel, revealNameLabel = buildReveal(panel)
+	local revealFrame, revealStroke, revealRarityLabel, reelTrack = buildReveal(panel)
 
 	local resultLabel = create("TextLabel", {
 		Name = "ResultLabel",
@@ -205,7 +269,7 @@ local function buildSpinPanel(screenGui)
 		RevealFrame = revealFrame,
 		RevealStroke = revealStroke,
 		RevealRarityLabel = revealRarityLabel,
-		RevealNameLabel = revealNameLabel,
+		ReelTrack = reelTrack,
 		ResultLabel = resultLabel,
 		SpinButton = spinButton,
 		SpinButtonGradient = spinButtonGradient,

@@ -5,7 +5,18 @@ local Players = game:GetService("Players")
 
 local DataService = {}
 
-local store = DataStoreService:GetDataStore("SpinABrainrot_PlayerData_v1")
+-- Wrap in pcall so unpublished Studio playtests don't crash (DataStore is
+-- only available in published games or Studio with API access enabled).
+local ok, storeResult = pcall(function()
+	return DataStoreService:GetDataStore("SpinABrainrot_PlayerData_v1")
+end)
+local store = ok and storeResult
+	or {
+		GetAsync = function()
+			return nil
+		end,
+		SetAsync = function() end,
+	}
 local cache = {} -- [player] = { Inventory = {[brainrotId]=count}, Equipped = {brainrotId, ...} }
 
 local function defaultData()
