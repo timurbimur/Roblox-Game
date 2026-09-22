@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 
 local RarityConfig = require(ReplicatedStorage.Modules.RarityConfig)
 local BrainrotConfig = require(ReplicatedStorage.Modules.BrainrotConfig)
+local RemoteHelpers = require(ReplicatedStorage.Modules.RemoteHelpers)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local SpinFunction = Remotes:WaitForChild("SpinFunction")
@@ -72,15 +73,13 @@ function SpinController.Init(ui)
 		setButtonEnabled(ui, false)
 		ui.ResultLabel.Text = ""
 
-		local ok, result = pcall(function()
-			return SpinFunction:InvokeServer()
-		end)
+		local ok, result = RemoteHelpers.InvokeWithTimeout(SpinFunction, 5)
 
 		if not ok then
 			rolling = false
 			setButtonEnabled(ui, true)
 			if ui.ShowDebug then
-				ui.ShowDebug("SpinFunction:InvokeServer() errored:\n\n" .. tostring(result))
+				ui.ShowDebug(tostring(result))
 			end
 			return
 		end

@@ -13,7 +13,8 @@
         "SpinFunction": { "$className": "RemoteFunction" },
         "EquipFunction": { "$className": "RemoteFunction" },
         "UnequipFunction": { "$className": "RemoteFunction" },
-        "InventoryUpdated": { "$className": "RemoteEvent" }
+        "InventoryUpdated": { "$className": "RemoteEvent" },
+        "ServerLog": { "$className": "RemoteEvent" }
       }
     },
 

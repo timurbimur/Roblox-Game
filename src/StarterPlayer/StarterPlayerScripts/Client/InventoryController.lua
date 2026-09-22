@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BrainrotConfig = require(ReplicatedStorage.Modules.BrainrotConfig)
 local RarityConfig = require(ReplicatedStorage.Modules.RarityConfig)
+local RemoteHelpers = require(ReplicatedStorage.Modules.RemoteHelpers)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local InventoryUpdated = Remotes:WaitForChild("InventoryUpdated")
@@ -88,9 +89,7 @@ function InventoryController.Init(ui)
 			button.Active = false
 
 			local remote = isEquipped and UnequipFunction or EquipFunction
-			local ok, result = pcall(function()
-				return remote:InvokeServer(brainrotId)
-			end)
+			local ok, result = RemoteHelpers.InvokeWithTimeout(remote, 5, brainrotId)
 
 			if ok and result and result.Success then
 				render(result.Inventory, result.Equipped)
