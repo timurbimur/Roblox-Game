@@ -73,7 +73,11 @@ end
 function ModelFactory.Create(brainrotData)
 	local assets = ServerStorage:FindFirstChild("Assets")
 	local library = assets and assets:FindFirstChild("Models")
-	local template = library and library:FindFirstChild(brainrotData.Id)
+	-- ModelName lets the ServerStorage lookup use a different name than the
+	-- (permanent, save-data-critical) Id -- e.g. a messy Toolbox model name
+	-- that shouldn't ever be used as a DataStore key.
+	local lookupName = brainrotData.ModelName or brainrotData.Id
+	local template = library and library:FindFirstChild(lookupName)
 
 	if template then
 		local clone = template:Clone()
