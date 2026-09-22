@@ -7,7 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BrainrotConfig = require(ReplicatedStorage.Modules.BrainrotConfig)
-local ModelFactory = require(script.Parent.ModelFactory)
+local BrainrotVisuals = require(ReplicatedStorage.Modules.BrainrotVisuals)
 
 local EquipService = {}
 
@@ -17,7 +17,7 @@ local FOLLOW_DISTANCE = 5 -- studs behind the character
 local SIDE_SPACING = 3 -- studs between equipped brainrots
 local HOP_HEIGHT = 1.4
 local HOP_SPEED = 5
-local FOLLOW_LERP_ALPHA = 0.12 -- lower = laggier/bouncier trailing
+local FOLLOW_LERP_ALPHA = 0.25 -- lower = laggier/bouncier trailing
 
 local activeCompanions = {} -- [player] = { {model, connection}, ... }
 
@@ -52,11 +52,12 @@ local function spawnCompanions(player, equippedIds)
 	for index, brainrotId in ipairs(equippedIds) do
 		local data = BrainrotConfig.ById[brainrotId]
 		if data then
-			local model = ModelFactory.Create(data)
+			local model = BrainrotVisuals.CreateModel(data)
 			model.Parent = workspace
 
 			local primary = model.PrimaryPart
 			if primary then
+				BrainrotVisuals.AttachInfoTag(model, data)
 				-- Spreads slots symmetrically around directly-behind (e.g. 3
 				-- slots -> -1, 0, 1 spacing units either side of center).
 				local centerOffset = index - (slotCount + 1) / 2
@@ -74,7 +75,9 @@ local function spawnCompanions(player, equippedIds)
 					local right = hrp.CFrame.RightVector
 					local basePosition = hrp.Position + behind * FOLLOW_DISTANCE + right * (centerOffset * SIDE_SPACING)
 
-					local hop = math.abs(math.sin(os.clock() * HOP_SPEED + phase)) * HOP_HEIGHT
+					-- (sin + 1) * 0.5 gives a smooth 0..1 wave; abs(sin) creates a
+					-- sharp V-shape bounce at the bottom of each cycle instead.
+					local hop = (math.sin(os.clock() * HOP_SPEED + phase) + 1) * 0.5 * HOP_HEIGHT
 					local targetPosition = Vector3.new(basePosition.X, basePosition.Y + hop, basePosition.Z)
 
 					currentPosition = currentPosition:Lerp(targetPosition, FOLLOW_LERP_ALPHA)

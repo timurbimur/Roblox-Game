@@ -1,4 +1,5 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Temporary on-screen debug/error display so failures are visible without
 -- needing to find the Output panel -- remove once things are stable.
@@ -33,6 +34,14 @@ local function createDebugDisplay()
 end
 
 local showDebug = createDebugDisplay()
+
+-- Server startup failures are broadcast on this the moment they happen, so
+-- they show up here even if the player never clicks anything.
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ServerLog = Remotes:WaitForChild("ServerLog")
+ServerLog.OnClientEvent:Connect(function(message)
+	showDebug("SERVER ERROR:\n" .. tostring(message))
+end)
 
 local ok, err = pcall(function()
 	local UIController = require(script.Parent.UIController)
