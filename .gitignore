@@ -1,0 +1,5 @@
+*.rbxl
+*.rbxlx
+sourcemap.json
+.rojo-cache/
+node_modules/
