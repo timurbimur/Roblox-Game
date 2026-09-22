@@ -15,6 +15,12 @@
         "UnequipFunction": { "$className": "RemoteFunction" },
         "InventoryUpdated": { "$className": "RemoteEvent" },
         "ServerLog": { "$className": "RemoteEvent" }
+      },
+      "Assets": {
+        "$className": "Folder",
+        "Models": {
+          "$className": "Folder"
+        }
       }
     },
 
@@ -22,16 +28,6 @@
       "$className": "ServerScriptService",
       "Server": {
         "$path": "src/ServerScriptService/Server"
-      }
-    },
-
-    "ServerStorage": {
-      "$className": "ServerStorage",
-      "Assets": {
-        "$className": "Folder",
-        "Models": {
-          "$className": "Folder"
-        }
       }
     },
 

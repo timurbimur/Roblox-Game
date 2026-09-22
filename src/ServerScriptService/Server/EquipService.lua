@@ -7,7 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BrainrotConfig = require(ReplicatedStorage.Modules.BrainrotConfig)
-local ModelFactory = require(script.Parent.ModelFactory)
+local BrainrotVisuals = require(ReplicatedStorage.Modules.BrainrotVisuals)
 
 local EquipService = {}
 
@@ -52,11 +52,12 @@ local function spawnCompanions(player, equippedIds)
 	for index, brainrotId in ipairs(equippedIds) do
 		local data = BrainrotConfig.ById[brainrotId]
 		if data then
-			local model = ModelFactory.Create(data)
+			local model = BrainrotVisuals.CreateModel(data)
 			model.Parent = workspace
 
 			local primary = model.PrimaryPart
 			if primary then
+				BrainrotVisuals.AttachInfoTag(model, data)
 				-- Spreads slots symmetrically around directly-behind (e.g. 3
 				-- slots -> -1, 0, 1 spacing units either side of center).
 				local centerOffset = index - (slotCount + 1) / 2

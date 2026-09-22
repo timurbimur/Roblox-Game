@@ -19,8 +19,7 @@ local SpinController = {}
 local rolling = false
 local spinRandom = Random.new()
 
-local IDLE_COLOR = Color3.fromRGB(90, 160, 255)
-local DISABLED_COLOR = Color3.fromRGB(60, 60, 80)
+local DISABLED_COLOR = Color3.fromRGB(90, 85, 110)
 
 local function showEntry(ui, entry)
 	local rarity = RarityConfig.Rarities[entry.Rarity]
@@ -58,9 +57,15 @@ local function playRoll(ui, onDone)
 	end)
 end
 
+-- The button's bright color comes from a UIGradient, which visually
+-- overrides BackgroundColor3 -- so "disabled" toggles the gradient off and
+-- falls back to a flat grey instead of trying to recolor it directly.
 local function setButtonEnabled(ui, enabled)
 	ui.SpinButton.Active = enabled
-	ui.SpinButton.BackgroundColor3 = enabled and IDLE_COLOR or DISABLED_COLOR
+	ui.SpinButton.BackgroundColor3 = DISABLED_COLOR
+	if ui.SpinButtonGradient then
+		ui.SpinButtonGradient.Enabled = enabled
+	end
 end
 
 function SpinController.Init(ui)
