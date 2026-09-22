@@ -1,13 +1,14 @@
--- Drives the dice-roll animation and reveals the brainrot the server awarded.
--- The dice face itself is purely cosmetic flavor -- the actual result always
--- comes from the server via SpinResult.
+-- Drives the "reel" animation: rapidly cycles through random candidate
+-- brainrots (slowing down over time, slot-machine style) before revealing the
+-- brainrot the server actually awarded. The cycling is purely cosmetic flavor
+-- -- the true result always comes from the server via SpinResult.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local RarityConfig = require(ReplicatedStorage.Modules.RarityConfig)
-local UIController = require(script.Parent.UIController)
+local BrainrotConfig = require(ReplicatedStorage.Modules.BrainrotConfig)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestSpin = Remotes:WaitForChild("RequestSpin")
@@ -16,38 +17,36 @@ local SpinResult = Remotes:WaitForChild("SpinResult")
 local SpinController = {}
 
 local rolling = false
-local diceRandom = Random.new()
+local spinRandom = Random.new()
 
-local function setFace(pips, faceNumber)
-	for _, pip in pairs(pips) do
-		pip.Visible = false
-	end
-	for _, coords in ipairs(UIController.FacePatterns[faceNumber]) do
-		local key = coords[1] .. "," .. coords[2]
-		local pip = pips[key]
-		if pip then
-			pip.Visible = true
-		end
-	end
+local function showEntry(ui, entry)
+	local rarity = RarityConfig.Rarities[entry.Rarity]
+	ui.RevealNameLabel.Text = entry.Name
+	ui.RevealRarityLabel.Text = rarity.DisplayName
+	ui.RevealRarityLabel.TextColor3 = rarity.Color
+	ui.RevealStroke.Color = rarity.Color
 end
 
 local function playRoll(ui, onDone)
 	local elapsed = 0
-	local timeSinceFace = 0
-	local duration = 1.4
-	local baseInterval = 0.06
+	local timeSinceSwap = 0
+	local duration = 1.6
+	local baseInterval = 0.05
+
+	local list = BrainrotConfig.List
 
 	local connection
 	connection = RunService.Heartbeat:Connect(function(dt)
 		elapsed += dt
-		timeSinceFace += dt
+		timeSinceSwap += dt
 
 		local progress = math.clamp(elapsed / duration, 0, 1)
-		local currentInterval = baseInterval + progress * 0.12
+		-- Ease the swap interval from fast to slow so it feels like it's settling.
+		local currentInterval = baseInterval + (progress ^ 2) * 0.25
 
-		if timeSinceFace >= currentInterval then
-			timeSinceFace = 0
-			setFace(ui.DicePips, diceRandom:NextInteger(1, 6))
+		if timeSinceSwap >= currentInterval then
+			timeSinceSwap = 0
+			showEntry(ui, list[spinRandom:NextInteger(1, #list)])
 		end
 
 		if elapsed >= duration then
@@ -80,23 +79,25 @@ function SpinController.Init(ui)
 
 		rolling = true
 		ui.SpinButton.Active = false
+		ui.SpinButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 		ui.ResultLabel.Text = ""
 		ui.ResultLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 
 		playRoll(ui, function()
 			local rarityData = RarityConfig.Rarities[result.Rarity]
-			setFace(ui.DicePips, diceRandom:NextInteger(1, 6))
+			showEntry(ui, { Name = result.Name, Rarity = result.Rarity })
 
 			ui.ResultLabel.Text = string.format("%s  •  %s", result.Name, rarityData.DisplayName)
 			ui.ResultLabel.TextColor3 = rarityData.Color
 
-			ui.DiceFrame.BackgroundColor3 = rarityData.Color
-			TweenService:Create(ui.DiceFrame, TweenInfo.new(0.5), {
+			ui.RevealFrame.BackgroundColor3 = rarityData.Color
+			TweenService:Create(ui.RevealFrame, TweenInfo.new(0.6), {
 				BackgroundColor3 = Color3.fromRGB(30, 30, 40),
 			}):Play()
 
 			rolling = false
 			ui.SpinButton.Active = true
+			ui.SpinButton.BackgroundColor3 = Color3.fromRGB(90, 160, 255)
 		end)
 	end)
 end

@@ -22,17 +22,6 @@ local function create(className, props, parent)
 	return inst
 end
 
--- Dice face pip layout on a 3x3 grid (row, col), 1-indexed.
-local FACE_PATTERNS = {
-	[1] = { { 2, 2 } },
-	[2] = { { 1, 1 }, { 3, 3 } },
-	[3] = { { 1, 1 }, { 2, 2 }, { 3, 3 } },
-	[4] = { { 1, 1 }, { 1, 3 }, { 3, 1 }, { 3, 3 } },
-	[5] = { { 1, 1 }, { 1, 3 }, { 2, 2 }, { 3, 1 }, { 3, 3 } },
-	[6] = { { 1, 1 }, { 1, 3 }, { 2, 1 }, { 2, 3 }, { 3, 1 }, { 3, 3 } },
-}
-UIController.FacePatterns = FACE_PATTERNS
-
 local function buildOddsPanel(screenGui)
 	local rowHeight = 24
 	local panel = create("Frame", {
@@ -95,33 +84,46 @@ local function buildOddsPanel(screenGui)
 	return panel
 end
 
-local function buildDice(spinPanel)
-	local diceFrame = create("Frame", {
-		Name = "DiceFrame",
-		Size = UDim2.fromOffset(140, 140),
-		Position = UDim2.new(0.5, -70, 0, 16),
+-- The "reel" that cycles through candidate brainrots while rolling, then lands
+-- on the real result (a slot-machine style reveal rather than a generic die).
+local function buildReveal(spinPanel)
+	local revealFrame = create("Frame", {
+		Name = "RevealFrame",
+		Size = UDim2.fromOffset(220, 140),
+		Position = UDim2.new(0.5, -110, 0, 16),
 		BackgroundColor3 = Color3.fromRGB(30, 30, 40),
 	}, spinPanel)
-	create("UICorner", { CornerRadius = UDim.new(0, 18) }, diceFrame)
-	create("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Thickness = 2, Transparency = 0.3 }, diceFrame)
+	create("UICorner", { CornerRadius = UDim.new(0, 18) }, revealFrame)
+	local stroke = create("UIStroke", {
+		Color = Color3.fromRGB(255, 255, 255),
+		Thickness = 2,
+		Transparency = 0.3,
+	}, revealFrame)
 
-	local pips = {}
-	for row = 1, 3 do
-		for col = 1, 3 do
-			local pip = create("Frame", {
-				Name = string.format("Pip_%d_%d", row, col),
-				Size = UDim2.fromOffset(24, 24),
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale((col - 1) / 3 + 1 / 6, (row - 1) / 3 + 1 / 6),
-				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-				Visible = false,
-			}, diceFrame)
-			create("UICorner", { CornerRadius = UDim.new(1, 0) }, pip)
-			pips[row .. "," .. col] = pip
-		end
-	end
+	local rarityLabel = create("TextLabel", {
+		Name = "RevealRarity",
+		Size = UDim2.new(1, -16, 0, 20),
+		Position = UDim2.fromOffset(8, 10),
+		BackgroundTransparency = 1,
+		Text = "",
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+		TextColor3 = Color3.fromRGB(200, 200, 200),
+	}, revealFrame)
 
-	return diceFrame, pips
+	local nameLabel = create("TextLabel", {
+		Name = "RevealName",
+		Size = UDim2.new(1, -16, 0, 90),
+		Position = UDim2.fromOffset(8, 34),
+		BackgroundTransparency = 1,
+		Text = "???",
+		TextWrapped = true,
+		TextScaled = true,
+		Font = Enum.Font.GothamBold,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+	}, revealFrame)
+
+	return revealFrame, stroke, rarityLabel, nameLabel
 end
 
 local function buildSpinPanel(screenGui)
@@ -136,7 +138,7 @@ local function buildSpinPanel(screenGui)
 	create("UICorner", { CornerRadius = UDim.new(0, 16) }, panel)
 	create("UIStroke", { Color = Color3.fromRGB(60, 60, 80), Thickness = 1.5 }, panel)
 
-	local diceFrame, pips = buildDice(panel)
+	local revealFrame, revealStroke, revealRarityLabel, revealNameLabel = buildReveal(panel)
 
 	local resultLabel = create("TextLabel", {
 		Name = "ResultLabel",
@@ -177,8 +179,10 @@ local function buildSpinPanel(screenGui)
 
 	return {
 		SpinPanel = panel,
-		DiceFrame = diceFrame,
-		DicePips = pips,
+		RevealFrame = revealFrame,
+		RevealStroke = revealStroke,
+		RevealRarityLabel = revealRarityLabel,
+		RevealNameLabel = revealNameLabel,
 		ResultLabel = resultLabel,
 		SpinButton = spinButton,
 		CooldownLabel = cooldownLabel,
